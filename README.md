@@ -73,5 +73,5 @@ Based on the patterns found in the data, here are four things a lending team cou
 
 ## Files
 ```
-├── credit-risk-analysis-final.ipynb
+├── credit-risk-analysis.ipynb
 ```
