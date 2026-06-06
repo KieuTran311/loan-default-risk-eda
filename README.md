@@ -1,11 +1,15 @@
 # Loan Default Risk — Exploratory Data Analysis
 Tools: Python, Pandas, Seaborn, Matplotlib, Jupyter Notebook
 
-## What's this about
+## The Business Problem
 
-When a bank approves a loan and the borrower defaults, the bank loses money. The question is: are there patterns in borrower data that could have flagged the risk earlier?
+Lending is core to how banks make money but it only works if borrowers pay back. When they don't, the bank absorbs the loss directly: bad debt hits the P&L, provisioning costs go up. If it gets bad enough, it squeezes everything downstream including bonuses and headcount.
 
-This project explores a loan dataset to understand which borrower characteristics tend to appear before a default. The goal isn't to build a prediction model — it's to get familiar with the data, understand the relationships between variables, and surface patterns that could inform smarter lending decisions.
+The challenge is that banks can't just reject every risky application. That kills revenue too. The real goal is to lend smarter, approve the right borrowers, price risk appropriately, and catch warning signs early enough to act.
+
+This project looks at a loan dataset to answer a straightforward question: _"What borrower characteristics actually predict default and what should a credit team do differently based on that?"_
+
+This is an exploratory analysis, the goal is to surface patterns in the data that can inform credit decisions, not to build a prediction model.
 
 ## Dataset
 
@@ -13,62 +17,88 @@ Credit Risk Dataset from Kaggle. Each row represents one loan application and in
 
 - Borrower info: age, annual income, employment length, home ownership status
 - Loan details: loan amount, interest rate, loan intent (education, medical, personal, etc.), loan grade
-- Risk indicators: loan-to-income ratio, prior default on file
-- Target variable: `loan_status` - 0 = repaid, 1 = defaulted
+- Risk indicators: prior default on file
+- Target variable: `loan_status` — 0 = repaid, 1 = defaulted
 
 ## Data Cleaning
 
-Before doing any analysis, I cleaned up a few issues in the raw data:
+Before any analysis, cleaned up several issues in the raw data:
 
-- Missing values `person_emp_length` and `loan_int_rate` both had nulls. I filled them with the median value for each column rather than dropping the rows.
-- Duplicates: Removed duplicate rows.
-- Outliers: Filtered out rows where age > 100 (clearly data entry errors), employment length > 60 years, and income ≤ 0. These values would distort any analysis if left in.
+- Missing values: `person_emp_length` and `loan_int_rate` both had nulls, filled with median rather than dropping rows.
+- Duplicates: removed
+- Outliers: filtered out age > 100, employment length > 60 years, income ≤ 0. These are clearly data entry errors that would distort any pattern-finding.
 
 ## Feature Engineering
 
-I created one new feature: Loan-to-Income (LTI) ratio.
+Created one new feature: _Loan-to-Income (LTI) ratio_
 
 ```python
 df['LTI'] = df['loan_amnt'] / df['person_income']
 ```
 
-This measures how heavy the loan burden is relative to the borrower's income. A person earning $30,000 taking out a $20,000 loan is in a very different situation from someone earning $100,000 taking out the same loan, LTI captures that difference.
+LTI measures how heavy the debt burden is relative to income. A person earning $30,000 taking out a $20,000 loan is in a very different position from someone earning $100,000 taking out the same amount. LTI captures that difference in a single number.
 
-I then grouped borrowers into three risk tiers based on LTI:
+Grouped borrowers into three risk tiers:
 - Low Risk: LTI < 0.2
-- Medium Risk: LTI 0.2–0.4
+- Medium Risk: LTI 0.2-0.4
 - High Risk: LTI > 0.4
 
 ## Exploratory Analysis
 
-I used a mix of visualizations to understand how each variable relates to loan_status:
+Used a mix of visualizations to understand how each variable relates to default:
 
-- Heatmap: Correlation between all numeric features. Helped identify which variables are most associated with default.
-- Count plots: Distribution of defaults by loan intent and by prior default history.
-- Boxplots: Comparing income and LTI distributions between defaulted and non-defaulted borrowers.
-- Histograms with KDE: Age distribution by loan status.
+- Heatmap: Correlation between numeric features to identify which variables move together with loan_status
+- Count plots: Default distribution by loan intent and prior default history
+- Boxplots: Income and LTI distributions for defaulted vs. non-defaulted borrowers
+- Histograms with KDE: age distribution by loan status
 
 ## Key Findings
 
-Prior default history is the strongest signal: Borrowers with `cb_person_default_on_file = Y` (meaning they've defaulted before) show substantially higher default rates in the current dataset. Past behavior is the best predictor of future behavior.
+_**Prior default history is the strongest signal:**_
 
-High LTI correlates with higher default: Borrowers in the High Risk tier (LTI > 0.4) consistently show higher default rates in the boxplot analysis. They're taking on more debt than their income can comfortably support.
+Borrowers with `cb_person_default_on_file = Y` show substantially higher default rates. This makes intuitive sense, past behavior is the most reliable predictor of future behavior. Someone who has defaulted before has already demonstrated they will do it again under financial pressure.
 
-Loan intent matters: Personal loans and medical loans have noticeably higher default rates compared to education or home improvement loans. This could reflect the borrower's financial situation at the time, medical emergencies and personal cash needs often come from a place of financial stress.
+_**High LTI correlates with higher default**_
 
-Lower income = higher risk: Across most loan intent categories, lower-income borrowers default more frequently. This is expected, but the magnitude of the difference reinforces the importance of income verification in the approval process.
+Borrowers in the High Risk tier (LTI > 0.4) consistently show higher default rates in the boxplot analysis. They're carrying more debt than their income can comfortably support and when something goes wrong (job loss), they have no buffer.
 
-## Recommendations
+**Loan intent matters**
 
-Based on the patterns found in the data, here are four things a lending team could consider:
+Personal loans and medical loans have noticeably higher default rates than education or home improvement loans. This likely reflects the borrower's situation at the time of application — someone taking out a medical loan is often already under financial stress, not planning ahead.
 
-1. Stricter approval criteria for high-LTI applicants: Borrowers with LTI > 0.4 show elevated risk. Adding a hard cap or requiring additional collateral for these cases could reduce default exposure.
+_**Lower income = higher risk**_
 
-2. Extra scrutiny for applicants with prior default on file: This is the single strongest indicator found in the data. A tiered review process for these applicants (additional documentation, lower loan limits) seems warranted.
+Across most loan intent categories, lower-income borrowers default more frequently. Combined with LTI, this suggests the issue isn't just how much someone borrows. It's how much they borrow relative to what they can realistically repay.
 
-3. Closer monitoring of personal and medical loan categories: These have higher default rates and may benefit from more frequent check-ins or earlier intervention when payments are missed.
+## What a Credit Team Should Do Differently
 
-4. Risk-based interest pricing: Rather than a flat rate, pricing loans based on a risk score (incorporating LTI, prior default, loan intent) would better reflect the actual risk the bank is taking on for each borrower.
+Banks can't reject every high-risk application, that kills revenue. The goal is to lend smarter: approve the right borrowers, manage exposure on borderline cases and price risk appropriately.
+
+Based on the patterns found in this analysis:
+
+_**1. Tighten approval criteria for high-LTI applicants (LTI > 0.4)**_
+
+These borrowers show elevated default rates consistently. Options for this group:
+- Approve but reduce the loan amount to bring LTI below the threshold.
+- Require additional collateral to offset the higher risk.
+- Reject if neither adjustment is feasible.
+
+The key point is that a blanket rejection isn't necessary, but lending the full requested amount at standard terms to a high-LTI borrower is leaving risk unmanaged.
+
+_**2. Apply extra scrutiny to applicants with prior default on file**_
+
+This is the single strongest predictor found in the data. For these applicants, a tiered review process makes sense:
+- Request additional documentation (income verification, current debt obligations).
+- Lower the approved loan limit.
+- Apply risk-based interest rate pricing to compensate for higher expected loss.
+
+_**3. Monitor personal and medical loan categories more closely**_
+
+These intents carry higher default rates, likely because borrowers are already under financial stress when they apply. Early warning systems like flagging missed payments sooner, proactive outreach could reduce loss given default even if the loan is ultimately approved.
+
+_**4. Move toward risk-based interest pricing**_
+
+A flat interest rate across all borrowers doesn't reflect actual risk. Pricing loans based on a combination of LTI, prior default history, and loan intent would allow the bank to maintain revenue on higher-risk loans while the higher rate compensates for expected losses rather than simply losing money when those loans go bad.
 
 
 ## Files
